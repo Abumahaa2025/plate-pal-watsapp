@@ -12,11 +12,7 @@ function Index() {
     // Handle Web Share Target return from WhatsApp — the service worker
     // already stashed the file in cache; the plates page will pick it up.
     supabase.auth.getSession().then(({ data }) => {
-      navigate({
-        to: data.session ? "/plates" : "/auth",
-        replace: true,
-        search: (prev) => prev,
-      });
+      navigate({ to: data.session ? "/plates" : "/auth", replace: true });
     });
   }, [navigate]);
 
