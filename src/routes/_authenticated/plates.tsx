@@ -366,6 +366,78 @@ function PlatesPage() {
         )}
       </section>
 
+      {/* Activity log */}
+      <section className="rounded-2xl bg-card border p-5 mt-6">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <h2 className="font-bold text-lg">سجل العمليات</h2>
+          {activity.length > 0 && (
+            <button
+              onClick={clearActivity}
+              className="text-xs px-3 py-1.5 rounded-lg border hover:bg-destructive hover:text-destructive-foreground"
+            >
+              مسح السجل
+            </button>
+          )}
+        </div>
+        {activity.length === 0 ? (
+          <p className="text-sm text-muted-foreground">لا توجد عمليات مسجلة بعد.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {activity.map((a) => {
+              const isImport = a.action === "import";
+              const batchExists = a.batch_id && savedBatches.some((b) => b.id === a.batch_id);
+              return (
+                <li key={a.id} className="py-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`shrink-0 text-[11px] font-bold px-2 py-1 rounded-md ${
+                        isImport
+                          ? "bg-primary/15 text-primary"
+                          : "bg-accent/20 text-accent-foreground"
+                      }`}
+                    >
+                      {isImport ? "استيراد" : `تصدير${a.format ? " " + a.format.toUpperCase() : ""}`}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{a.filename}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {a.count} لوحة · {new Date(a.created_at).toLocaleString("ar")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {batchExists && (
+                      <>
+                        <button
+                          onClick={() => loadBatch(a.batch_id!)}
+                          className="h-9 px-3 rounded-lg bg-accent text-accent-foreground text-sm font-semibold hover:opacity-90"
+                        >
+                          إعادة فتح
+                        </button>
+                        <button
+                          onClick={() =>
+                            reExportBatch(a.batch_id!, a.filename, (a.format as "xlsx" | "csv") || "xlsx")
+                          }
+                          className="h-9 px-3 rounded-lg border text-sm hover:bg-secondary"
+                        >
+                          إعادة تصدير
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => deleteActivity(a.id)}
+                      className="h-9 px-3 rounded-lg border text-sm hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      حذف
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       <footer className="text-center text-xs text-muted-foreground mt-8">
         نصيحة: افتح التطبيق من الشاشة الرئيسية (تثبيت PWA) لتفعيل الاستقبال المباشر من واتساب.
       </footer>
