@@ -214,12 +214,20 @@ function PlatesPage() {
     if (activityFilter !== "all") {
       list = list.filter((a) => a.action === activityFilter);
     }
+    const q = activityQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (a) =>
+          a.filename.toLowerCase().includes(q) ||
+          String(a.count).includes(q),
+      );
+    }
     return [...list].sort((a, b) => {
       const ta = new Date(a.created_at).getTime();
       const tb = new Date(b.created_at).getTime();
       return activitySort === "newest" ? tb - ta : ta - tb;
     });
-  }, [activity, activityFilter, activitySort]);
+  }, [activity, activityFilter, activitySort, activityQuery]);
 
   return (
     <main className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
