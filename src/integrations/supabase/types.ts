@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      plate_activity: {
+        Row: {
+          action: string
+          batch_id: string | null
+          count: number
+          created_at: string
+          filename: string
+          format: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          batch_id?: string | null
+          count?: number
+          created_at?: string
+          filename: string
+          format?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          batch_id?: string | null
+          count?: number
+          created_at?: string
+          filename?: string
+          format?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plate_activity_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "plate_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plate_batches: {
         Row: {
           created_at: string
