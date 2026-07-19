@@ -15,6 +15,8 @@ export const Route = createFileRoute("/_authenticated/plates")({
 });
 
 type SortMode = "asc" | "desc" | "none";
+type ActivityFilter = "all" | "import" | "export";
+type ActivitySort = "newest" | "oldest";
 
 function PlatesPage() {
   const navigate = useNavigate();
@@ -30,6 +32,8 @@ function PlatesPage() {
   const [activity, setActivity] = useState<
     { id: string; action: "import" | "export"; filename: string; format: string | null; count: number; batch_id: string | null; created_at: string }[]
   >([]);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
+  const [activitySort, setActivitySort] = useState<ActivitySort>("newest");
   const [loading, setLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
