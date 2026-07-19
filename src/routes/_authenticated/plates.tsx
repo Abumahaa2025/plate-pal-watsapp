@@ -27,17 +27,57 @@ function PlatesPage() {
   const [savedBatches, setSavedBatches] = useState<
     { id: string; name: string; count: number; created_at: string }[]
   >([]);
+  const [activity, setActivity] = useState<
+    { id: string; action: "import" | "export"; filename: string; format: string | null; count: number; batch_id: string | null; created_at: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
     loadBatches();
+    loadActivity();
     // Pick up file shared from WhatsApp via the service worker cache
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("shared") === "1") {
       pickupSharedFile();
     }
   }, []);
+
+  async function loadActivity() {
+    const { data } = await supabase
+      .from("plate_activity")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setActivity((data ?? []) as any);
+  }
+
+  async function logActivity(entry: { action: "import" | "export"; filename: string; format?: string; count: number; batch_id?: string | null }) {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+    await supabase.from("plate_activity").insert({
+      user_id: u.user.id,
+      action: entry.action,
+      filename: entry.filename,
+      format: entry.format ?? null,
+      count: entry.count,
+      batch_id: entry.batch_id ?? null,
+    });
+    loadActivity();
+  }
+
+  async function deleteActivity(id: string) {
+    await supabase.from("plate_activity").delete().eq("id", id);
+    setActivity((a) => a.filter((x) => x.id !== id));
+  }
+
+  async function clearActivity() {
+    if (!confirm("حذف كامل سجل النشاط؟")) return;
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+    await supabase.from("plate_activity").delete().eq("user_id", u.user.id);
+    setActivity([]);
+  }
 
   async function loadBatches() {
     const { data, error } = await supabase
@@ -77,9 +117,23 @@ function PlatesPage() {
       setPlates(parsed);
       setFilename(name);
       toast.success(`تم استيراد ${parsed.length} لوحة من ${name}`);
+      logActivity({ action: "import", filename: name, count: parsed.length });
     } catch (e) {
       toast.error("فشل قراءة الملف. تأكد أنه Excel أو CSV صالح.");
     }
+  }
+
+  function doExport(list: Plate[], name: string, format: "xlsx" | "csv", batchId?: string | null) {
+    exportPlates(list, name, format);
+    logActivity({ action: "export", filename: name, format, count: list.length, batch_id: batchId ?? null });
+  }
+
+  async function reExportBatch(id: string, name: string, format: "xlsx" | "csv") {
+    const { data, error } = await supabase.from("plate_batches").select("plates,name").eq("id", id).single();
+    if (error || !data) return toast.error("تعذّر إعادة التصدير");
+    const list = (data.plates as unknown as Plate[]) ?? [];
+    doExport(list, data.name || name, format, id);
+    toast.success("تم إعادة التصدير");
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -208,13 +262,13 @@ function PlatesPage() {
             </div>
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => exportPlates(processed, filename, "xlsx")}
+                onClick={() => doExport(processed, filename, "xlsx")}
                 className="h-10 px-4 rounded-lg bg-accent text-accent-foreground font-semibold hover:opacity-90"
               >
                 تصدير Excel
               </button>
               <button
-                onClick={() => exportPlates(processed, filename, "csv")}
+                onClick={() => doExport(processed, filename, "csv")}
                 className="h-10 px-4 rounded-lg border font-semibold hover:bg-secondary"
               >
                 تصدير CSV
@@ -308,6 +362,78 @@ function PlatesPage() {
                 </div>
               </li>
             ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Activity log */}
+      <section className="rounded-2xl bg-card border p-5 mt-6">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <h2 className="font-bold text-lg">سجل العمليات</h2>
+          {activity.length > 0 && (
+            <button
+              onClick={clearActivity}
+              className="text-xs px-3 py-1.5 rounded-lg border hover:bg-destructive hover:text-destructive-foreground"
+            >
+              مسح السجل
+            </button>
+          )}
+        </div>
+        {activity.length === 0 ? (
+          <p className="text-sm text-muted-foreground">لا توجد عمليات مسجلة بعد.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {activity.map((a) => {
+              const isImport = a.action === "import";
+              const batchExists = a.batch_id && savedBatches.some((b) => b.id === a.batch_id);
+              return (
+                <li key={a.id} className="py-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`shrink-0 text-[11px] font-bold px-2 py-1 rounded-md ${
+                        isImport
+                          ? "bg-primary/15 text-primary"
+                          : "bg-accent/20 text-accent-foreground"
+                      }`}
+                    >
+                      {isImport ? "استيراد" : `تصدير${a.format ? " " + a.format.toUpperCase() : ""}`}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{a.filename}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {a.count} لوحة · {new Date(a.created_at).toLocaleString("ar")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {batchExists && (
+                      <>
+                        <button
+                          onClick={() => loadBatch(a.batch_id!)}
+                          className="h-9 px-3 rounded-lg bg-accent text-accent-foreground text-sm font-semibold hover:opacity-90"
+                        >
+                          إعادة فتح
+                        </button>
+                        <button
+                          onClick={() =>
+                            reExportBatch(a.batch_id!, a.filename, (a.format as "xlsx" | "csv") || "xlsx")
+                          }
+                          className="h-9 px-3 rounded-lg border text-sm hover:bg-secondary"
+                        >
+                          إعادة تصدير
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => deleteActivity(a.id)}
+                      className="h-9 px-3 rounded-lg border text-sm hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      حذف
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
