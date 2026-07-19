@@ -15,6 +15,8 @@ export const Route = createFileRoute("/_authenticated/plates")({
 });
 
 type SortMode = "asc" | "desc" | "none";
+type ActivityFilter = "all" | "import" | "export";
+type ActivitySort = "newest" | "oldest";
 
 function PlatesPage() {
   const navigate = useNavigate();
@@ -30,6 +32,8 @@ function PlatesPage() {
   const [activity, setActivity] = useState<
     { id: string; action: "import" | "export"; filename: string; format: string | null; count: number; batch_id: string | null; created_at: string }[]
   >([]);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
+  const [activitySort, setActivitySort] = useState<ActivitySort>("newest");
   const [loading, setLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -203,6 +207,18 @@ function PlatesPage() {
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
+
+  const filteredActivity = useMemo(() => {
+    let list = activity;
+    if (activityFilter !== "all") {
+      list = list.filter((a) => a.action === activityFilter);
+    }
+    return [...list].sort((a, b) => {
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return activitySort === "newest" ? tb - ta : ta - tb;
+    });
+  }, [activity, activityFilter, activitySort]);
 
   return (
     <main className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
@@ -379,11 +395,38 @@ function PlatesPage() {
             </button>
           )}
         </div>
-        {activity.length === 0 ? (
-          <p className="text-sm text-muted-foreground">لا توجد عمليات مسجلة بعد.</p>
+        {activity.length > 0 && (
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">النوع:</label>
+              <select
+                value={activityFilter}
+                onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
+                className="h-9 rounded-lg bg-input border px-2 text-sm"
+              >
+                <option value="all">الكل</option>
+                <option value="import">استيراد</option>
+                <option value="export">تصدير</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">الترتيب:</label>
+              <select
+                value={activitySort}
+                onChange={(e) => setActivitySort(e.target.value as ActivitySort)}
+                className="h-9 rounded-lg bg-input border px-2 text-sm"
+              >
+                <option value="newest">الأحدث أولاً</option>
+                <option value="oldest">الأقدم أولاً</option>
+              </select>
+            </div>
+          </div>
+        )}
+        {filteredActivity.length === 0 ? (
+          <p className="text-sm text-muted-foreground">لا توجد عمليات مطابقة للفلتر.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {activity.map((a) => {
+            {filteredActivity.map((a) => {
               const isImport = a.action === "import";
               const batchExists = a.batch_id && savedBatches.some((b) => b.id === a.batch_id);
               return (
