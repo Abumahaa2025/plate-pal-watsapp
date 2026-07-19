@@ -34,6 +34,7 @@ function PlatesPage() {
   >([]);
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const [activitySort, setActivitySort] = useState<ActivitySort>("newest");
+  const [activityQuery, setActivityQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
