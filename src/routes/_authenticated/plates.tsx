@@ -406,6 +406,14 @@ function PlatesPage() {
         </div>
         {activity.length > 0 && (
           <div className="flex flex-wrap gap-3 mb-4">
+            <div className="flex items-center gap-2 flex-1 min-w-[12rem]">
+              <input
+                value={activityQuery}
+                onChange={(e) => setActivityQuery(e.target.value)}
+                placeholder="بحث باسم الملف أو عدد السجلات..."
+                className="h-9 w-full rounded-lg bg-input border px-3 text-sm outline-none focus:ring-2 ring-ring"
+              />
+            </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-muted-foreground">النوع:</label>
               <select
