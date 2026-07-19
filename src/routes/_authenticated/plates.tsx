@@ -27,17 +27,57 @@ function PlatesPage() {
   const [savedBatches, setSavedBatches] = useState<
     { id: string; name: string; count: number; created_at: string }[]
   >([]);
+  const [activity, setActivity] = useState<
+    { id: string; action: "import" | "export"; filename: string; format: string | null; count: number; batch_id: string | null; created_at: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
     loadBatches();
+    loadActivity();
     // Pick up file shared from WhatsApp via the service worker cache
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("shared") === "1") {
       pickupSharedFile();
     }
   }, []);
+
+  async function loadActivity() {
+    const { data } = await supabase
+      .from("plate_activity")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setActivity((data ?? []) as any);
+  }
+
+  async function logActivity(entry: { action: "import" | "export"; filename: string; format?: string; count: number; batch_id?: string | null }) {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+    await supabase.from("plate_activity").insert({
+      user_id: u.user.id,
+      action: entry.action,
+      filename: entry.filename,
+      format: entry.format ?? null,
+      count: entry.count,
+      batch_id: entry.batch_id ?? null,
+    });
+    loadActivity();
+  }
+
+  async function deleteActivity(id: string) {
+    await supabase.from("plate_activity").delete().eq("id", id);
+    setActivity((a) => a.filter((x) => x.id !== id));
+  }
+
+  async function clearActivity() {
+    if (!confirm("حذف كامل سجل النشاط؟")) return;
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+    await supabase.from("plate_activity").delete().eq("user_id", u.user.id);
+    setActivity([]);
+  }
 
   async function loadBatches() {
     const { data, error } = await supabase
