@@ -262,13 +262,13 @@ function PlatesPage() {
             </div>
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => exportPlates(processed, filename, "xlsx")}
+                onClick={() => doExport(processed, filename, "xlsx")}
                 className="h-10 px-4 rounded-lg bg-accent text-accent-foreground font-semibold hover:opacity-90"
               >
                 تصدير Excel
               </button>
               <button
-                onClick={() => exportPlates(processed, filename, "csv")}
+                onClick={() => doExport(processed, filename, "csv")}
                 className="h-10 px-4 rounded-lg border font-semibold hover:bg-secondary"
               >
                 تصدير CSV
