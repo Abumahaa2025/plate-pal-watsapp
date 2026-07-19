@@ -117,9 +117,23 @@ function PlatesPage() {
       setPlates(parsed);
       setFilename(name);
       toast.success(`تم استيراد ${parsed.length} لوحة من ${name}`);
+      logActivity({ action: "import", filename: name, count: parsed.length });
     } catch (e) {
       toast.error("فشل قراءة الملف. تأكد أنه Excel أو CSV صالح.");
     }
+  }
+
+  function doExport(list: Plate[], name: string, format: "xlsx" | "csv", batchId?: string | null) {
+    exportPlates(list, name, format);
+    logActivity({ action: "export", filename: name, format, count: list.length, batch_id: batchId ?? null });
+  }
+
+  async function reExportBatch(id: string, name: string, format: "xlsx" | "csv") {
+    const { data, error } = await supabase.from("plate_batches").select("plates,name").eq("id", id).single();
+    if (error || !data) return toast.error("تعذّر إعادة التصدير");
+    const list = (data.plates as unknown as Plate[]) ?? [];
+    doExport(list, data.name || name, format, id);
+    toast.success("تم إعادة التصدير");
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
