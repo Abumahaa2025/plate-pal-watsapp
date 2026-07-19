@@ -208,6 +208,18 @@ function PlatesPage() {
     navigate({ to: "/auth", replace: true });
   }
 
+  const filteredActivity = useMemo(() => {
+    let list = activity;
+    if (activityFilter !== "all") {
+      list = list.filter((a) => a.action === activityFilter);
+    }
+    return [...list].sort((a, b) => {
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return activitySort === "newest" ? tb - ta : ta - tb;
+    });
+  }, [activity, activityFilter, activitySort]);
+
   return (
     <main className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
       <Toaster richColors position="top-center" />
