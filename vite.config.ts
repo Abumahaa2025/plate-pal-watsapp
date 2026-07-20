@@ -6,7 +6,28 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Netlify often sets SUPABASE_* without the VITE_ prefix. Lovable's envDefine only injects
+// VITE_* from loadEnv, so the client bundle would keep a stale key from a committed .env file
+// unless we explicitly resolve the publishable key at config time from process.env.
+const supabaseUrl =
+  process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+const supabasePublishableKey =
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.SUPABASE_PUBLISHABLE_KEY ??
+  "";
+const siteUrl = process.env.VITE_SITE_URL ?? "";
+
 export default defineConfig({
+  vite: {
+    define: {
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY":
+        JSON.stringify(supabasePublishableKey),
+      ...(siteUrl
+        ? { "import.meta.env.VITE_SITE_URL": JSON.stringify(siteUrl) }
+        : {}),
+    },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

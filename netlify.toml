@@ -1,2 +1,9 @@
-# Keep Netlify build/publish settings from the dashboard (TanStack Start SSR).
-# App route /auth/callback handles Google OAuth return after deploy.
+# TanStack Start SSR — publish/output dirs stay in the Netlify UI.
+#
+# Required environment variables (Site settings → Environment):
+#   SUPABASE_URL or VITE_SUPABASE_URL
+#   SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_PUBLISHABLE_KEY
+#     → must match the active publishable key in Supabase → Project Settings → API
+#   VITE_SITE_URL  (e.g. https://effortless-malasada-6c815c.netlify.app)
+#
+# After changing keys, run "Clear cache and deploy site" so Vite rebakes the client bundle.
