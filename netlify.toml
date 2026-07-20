@@ -1,0 +1,2 @@
+# Keep Netlify build/publish settings from the dashboard (TanStack Start SSR).
+# App route /auth/callback handles Google OAuth return after deploy.

@@ -13,6 +13,19 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const hasOAuthReturn =
+      url.searchParams.has("code") ||
+      url.hash.includes("access_token") ||
+      url.hash.includes("refresh_token");
+    if (hasOAuthReturn) {
+      // Recover OAuth returns that landed on an unknown path.
+      window.location.replace(`/auth/callback${url.search}${url.hash}`);
+    }
+  }, []);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">

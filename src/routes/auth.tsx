@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getAuthRedirectUrl } from "@/lib/site";
+import { SITE_URL } from "@/lib/site";
 import { toast, Toaster } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -22,9 +22,29 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/plates", replace: true });
+    const url = new URL(window.location.href);
+    const hasOAuthReturn =
+      url.searchParams.has("code") ||
+      url.hash.includes("access_token") ||
+      url.hash.includes("refresh_token");
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        navigate({ to: "/plates", replace: true });
+        return;
+      }
+      if (hasOAuthReturn) {
+        const code = url.searchParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error) {
+            navigate({ to: "/plates", replace: true });
+            return;
+          }
+        }
+      }
     });
+
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session) navigate({ to: "/plates", replace: true });
     });
@@ -36,13 +56,11 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        // Create account and activate immediately when Supabase does not
-        // require email confirmation (Confirm email = OFF).
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: getAuthRedirectUrl("/auth"),
+            emailRedirectTo: `${SITE_URL}/auth`,
             data: { full_name: email.split("@")[0] },
           },
         });
@@ -54,8 +72,6 @@ function AuthPage() {
           return;
         }
 
-        // Session missing usually means "Confirm email" is still ON in Supabase.
-        // Try immediate sign-in in case the project allows unconfirmed login.
         const { data: signInData, error: signInError } =
           await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
@@ -101,7 +117,7 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}`,
+        redirectTo: `${SITE_URL}/auth/callback`,
       },
     });
     if (error) toast.error(error.message || "تعذّر تسجيل الدخول بجوجل");

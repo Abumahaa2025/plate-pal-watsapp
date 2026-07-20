@@ -1,10 +1,13 @@
 project_id = "gtpfhehfcadteaphkida"
 
 [auth]
-# Site URL used in redirects (hosted project must match Netlify).
 site_url = "https://effortless-malasada-6c815c.netlify.app"
-additional_redirect_urls = ["https://effortless-malasada-6c815c.netlify.app", "https://effortless-malasada-6c815c.netlify.app/**"]
+additional_redirect_urls = [
+  "https://effortless-malasada-6c815c.netlify.app",
+  "https://effortless-malasada-6c815c.netlify.app/**",
+  "https://effortless-malasada-6c815c.netlify.app/auth",
+  "https://effortless-malasada-6c815c.netlify.app/auth/callback"
+]
 
 [auth.email]
-# Disable email confirmation so "أنشئ واحداً" activates the account immediately.
 enable_confirmations = false
