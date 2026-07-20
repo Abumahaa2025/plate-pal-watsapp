@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
-import { getAuthRedirectUrl, SITE_URL } from "@/lib/site";
+import { getAuthRedirectUrl } from "@/lib/site";
 import { toast, Toaster } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -99,11 +98,13 @@ function AuthPage() {
   }
 
   async function google() {
-    // Always redirect back to the Netlify production URL to avoid localhost 404.
-    const res = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: SITE_URL,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}`,
+      },
     });
-    if (res.error) toast.error(res.error.message || "تعذّر تسجيل الدخول بجوجل");
+    if (error) toast.error(error.message || "تعذّر تسجيل الدخول بجوجل");
   }
 
   return (
