@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { getAuthRedirectUrl, SITE_URL } from "@/lib/site";
 import { toast, Toaster } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -36,16 +37,59 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        // Create account and activate immediately when Supabase does not
+        // require email confirmation (Confirm email = OFF).
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: {
+            emailRedirectTo: getAuthRedirectUrl("/auth"),
+            data: { full_name: email.split("@")[0] },
+          },
         });
         if (error) throw error;
-        toast.success("تم إنشاء الحساب. تحقق من بريدك إن لزم.");
+
+        if (data.session) {
+          toast.success("تم إنشاء الحساب وتفعيله. مرحباً بك!");
+          navigate({ to: "/plates", replace: true });
+          return;
+        }
+
+        // Session missing usually means "Confirm email" is still ON in Supabase.
+        // Try immediate sign-in in case the project allows unconfirmed login.
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          const msg = signInError.message.toLowerCase();
+          if (msg.includes("confirm") || msg.includes("not confirmed")) {
+            throw new Error(
+              "تم إنشاء الحساب لكن تأكيد البريد مفعّل في Supabase. أوقف Confirm email من Authentication → Providers → Email ثم أعد المحاولة.",
+            );
+          }
+          throw signInError;
+        }
+        if (signInData.session) {
+          toast.success("تم إنشاء الحساب وتسجيل الدخول.");
+          navigate({ to: "/plates", replace: true });
+          return;
+        }
+
+        toast.message("تم إنشاء الحساب. سجّل الدخول الآن.");
+        setMode("signin");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) {
+          const msg = error.message.toLowerCase();
+          if (msg.includes("confirm") || msg.includes("not confirmed")) {
+            throw new Error(
+              "البريد غير مؤكد. أوقف Confirm email في Supabase أو أكّد بريدك أولاً.",
+            );
+          }
+          throw error;
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "حدث خطأ");
@@ -55,8 +99,9 @@ function AuthPage() {
   }
 
   async function google() {
+    // Always redirect back to the Netlify production URL to avoid localhost 404.
     const res = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: SITE_URL,
     });
     if (res.error) toast.error(res.error.message || "تعذّر تسجيل الدخول بجوجل");
   }
